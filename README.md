@@ -53,7 +53,7 @@ python cbzgui.py
 pip install uv
 uv run cbzgui.py
 ```
-### Option 3: Use the given exe.
+### Option 3: Grab the .exe from Release Page.
 ---
 
 ---
