@@ -1,6 +1,6 @@
 # 📦 CBZ Cover Manager
 
-A powerful and modern GUI tool for managing, adding, removing, and previewing **cover images in CBZ files** (Comic Book Zip). Built with **Python + Tkinter**, it supports drag-and-drop, dark mode, manual and automated assignments, and many advanced features for batch processing comic archives.
+A powerful and modern GUI tool for managing, adding, removing, and previewing **cover images in CBZ files** (Comic Book Zip). Built with **Python + Tkinter**, it supports drag-and-drop, dark mode, manual and automated assignments.
 
 ---
 
@@ -29,6 +29,8 @@ A powerful and modern GUI tool for managing, adding, removing, and previewing **
 - **Priority**: Manual > Auto > Global
 
 ---
+![image](https://github.com/user-attachments/assets/1ace9cb9-5436-4c15-a0df-7e2a852d020c)
+_Example Preview of GUI showing Manual Assign, Auto Assign, Set as Front/Back Cover and Delete in Play._
 
 ## 📦 Installation
 
