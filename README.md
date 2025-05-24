@@ -9,7 +9,8 @@ A powerful and modern GUI tool for managing, adding, removing, and previewing **
 - ✅ Load `.cbz` or `.zip` files (with optional auto-rename).
 - ✅ Drag & Drop folder or files into UI.
 - ✅ Navigate and preview pages from within CBZs.
-- ✅ Mark pages for deletion, with undo support.
+- ✅ Mark individual pages for deletion, with undo support.
+- ✅ Mark all First/Last pages for deletion, with clear support.
 - ✅ Auto/Manual/Global Front & Back cover assignment.
 - ✅ CBZ-level and Global cover removal options.
 - ✅ Preview assigned covers before applying.
