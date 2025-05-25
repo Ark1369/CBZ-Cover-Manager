@@ -6,7 +6,7 @@ A powerful and modern GUI tool for managing, adding, removing, and previewing **
 
 ## 🚀 Features
 
-- ✅ Load `.cbz` or `.zip` files (with optional auto-rename).
+- ✅ Load `.cbz` or `.zip` files (with optional auto-rename ZIP to CBZ).
 - ✅ Drag & Drop folder or files into UI.
 - ✅ Navigate and preview pages from within CBZs.
 - ✅ Mark individual pages for deletion, with undo support.
@@ -21,13 +21,14 @@ A powerful and modern GUI tool for managing, adding, removing, and previewing **
 
 ---
 
-## 🖼️ Cover Assignment Logic
+## 🖼️ Cover Manipulation
 
 - **Auto Assignment**: based on filename patterns like `v02 Front.webp/v02 Front Alt.webp/v02 Front 2.webp and so on`
 - **Manual Assignment**: choose image files or CBZ pages manually
 - **Global Assignment**: assign same image to all CBZs (optionally filter by name to apply selectively)
 - **Set as Cover from CBZ**: mark currently previewed page as Front/Back COver instead.
 - **Priority**: Manual > Auto > Global
+- **Remove Covers**: One click removal of everything this program has added without touching your original files.
 
 ---
 ![image](https://github.com/user-attachments/assets/1ace9cb9-5436-4c15-a0df-7e2a852d020c)
