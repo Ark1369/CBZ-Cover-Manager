@@ -62,7 +62,7 @@ uv run cbzgui.py
 
 ## 📖 Usage Guide
 
-See the **Help** section within the app or check the in-app `?` menu for a detailed walkthrough. A quick summary:
+See the **Help** section within the app for a detailed walkthrough. A quick summary:
 
 - Load your files or folder
 - Assign covers manually, automatically, or globally
