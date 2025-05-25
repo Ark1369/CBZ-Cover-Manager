@@ -23,11 +23,11 @@ A powerful and modern GUI tool for managing, adding, removing, and previewing **
 
 ## 🖼️ Cover Manipulation
 
-- **Auto Assignment**: based on filename patterns like `v02 Front.webp/v02 Front Alt.webp/v02 Front 2.webp and so on`
-- **Manual Assignment**: choose image files or CBZ pages manually
-- **Global Assignment**: assign same image to all CBZs (optionally filter by name to apply selectively)
-- **Set as Cover from CBZ**: mark currently previewed page as Front/Back COver instead.
-- **Priority**: Manual > Auto > Global
+- **Auto Assignment**: Auto append image(s) based on filename patterns like `v02 Front.webp/v02 Front Alt.webp/v02 Front 2.webp and so on`.
+- **Manual Assignment**: Choose image(s) from anywhere locally.
+- **Global Assignment**: Assign same image(s) to all CBZs (optionally filter by name to apply selectively).
+- **Set as Cover from CBZ**: Mark currently previewed page from Navigation as Front/Back Cover.
+- **Priority**: Manual > Auto > Global.
 - **Remove Covers**: One click removal of everything this program has added without touching your original files.
 
 ---
