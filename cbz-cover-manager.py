@@ -14,6 +14,7 @@ import traceback
 import concurrent.futures
 import queue as std_queue
 import tkinter as tk
+from tkinter import messagebox
 import time
 import uuid
 from tkinter import filedialog, ttk
@@ -27,7 +28,43 @@ from PIL import Image, ImageTk, ImageEnhance
 from io import BytesIO
 
 
+
+# Logging configuration
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 # === Utility Functions ===
+
+def thread_safe_callback(func, *args, **kwargs):
+    """Ensure GUI updates happen on main thread"""
+    try:
+        func(*args, **kwargs)
+    except Exception as e:
+        logger.error(f"Error in thread-safe callback: {e}")
+
+
+
+def validate_cbz_path(path):
+    """Validate CBZ file path for safety"""
+    if not path:
+        return False
+    try:
+        # Normalize path to prevent directory traversal
+        normalized = os.path.normpath(os.path.abspath(path))
+        # Check if file exists and has valid extension
+        if not os.path.exists(normalized):
+            logger.warning(f"File does not exist: {normalized}")
+            return False
+        if not normalized.lower().endswith('.cbz'):
+            logger.warning(f"Invalid file extension: {normalized}")
+            return False
+        return True
+    except Exception as e:
+        logger.error(f"Path validation error: {e}")
+        return False
+
+
 def extract_vol_number(filename):
     match = re.search(r"\d+", filename)
     return int(match.group()) if match else None
@@ -54,6 +91,7 @@ def zip_image_hashes(zip_path, algo="sha256"):
     return hashes
 
 def rewrite_cbz(cbz_path, add_images=None, delete_files=None, zip_hash_cache=None, global_hash_cache=None, compress=True):
+    logger.info(f"Executing rewrite_cbz")
     """
     Safely rewrites a CBZ by applying all deletions and additions in one pass.
     """
@@ -101,6 +139,7 @@ def rewrite_cbz(cbz_path, add_images=None, delete_files=None, zip_hash_cache=Non
         raise e
 
 def fast_append_covers(cbz_path, image_paths, zip_hash_cache=None, global_hash_cache=None):
+    logger.info(f"Executing fast_append_covers")
     if zip_hash_cache is None:
         zip_hash_cache = zip_image_hashes(cbz_path)
 
@@ -475,28 +514,140 @@ class CBZCoverManager:
         self.root.after(100, self.process_queue)
 
     def _on_drop(self, event):
+        """Enhanced drag and drop handler for CBZ files and folders"""
         paths = self.root.tk.splitlist(event.data)
         cbz_files = []
+        folders = []
+        
+        # Parse and categorize dropped items
         for path in paths:
-            path = path.strip('"')
+            path = path.strip('{}').strip('"').strip("'")  # Handle various quote formats
+            
+            if not os.path.exists(path):
+                self.log(f"⚠️ Path does not exist: {path}")
+                continue
+                
             if os.path.isdir(path):
-                self.log(f"🗂️ Dropped folder: {path}")
-                self.load_folder(path)
-                return  # stop here, folders should be exclusive
+                folders.append(path)
             elif path.lower().endswith(".cbz"):
                 cbz_files.append(path)
             elif self._load_zip_as_cbz.get() and path.lower().endswith(".zip"):
                 cbz_equiv = os.path.splitext(path)[0] + ".cbz"
                 try:
                     os.rename(path, cbz_equiv)
-                    self.log(f"🔄 Renamed ZIP to CBZ: {cbz_equiv}")
+                    self.log(f"🔄 Renamed ZIP to CBZ: {os.path.basename(cbz_equiv)}")
                     cbz_files.append(cbz_equiv)
                 except Exception as e:
-                    self.log(f"❌ Failed to rename {path}: {e}")
-                    
+                    self.log(f"❌ Failed to rename {os.path.basename(path)}: {e}")
+        
+        # Process folders first
+        if folders:
+            if len(folders) == 1:
+                self.log(f"🗂️ Processing dropped folder: {os.path.basename(folders[0])}")
+                self.load_folder_path(folders[0])
+            else:
+                self.log(f"🗂️ Processing {len(folders)} dropped folders")
+                self.load_multiple_folders(folders)
+            return
+        
+        # Process CBZ files
         if cbz_files:
             self.log(f"📘 Dropped {len(cbz_files)} CBZ file(s)")
             self.load_cbz_files(cbz_files)
+
+    def load_folder_path(self, folder_path):
+        """Load CBZ files from a specific folder path"""
+        def worker():
+            self.executor.call_in_main_thread(lambda: self.log(f"Loading files from {os.path.basename(folder_path)}..."))
+            cbz_entries, image_files = [], []
+
+            for root, _, files in os.walk(folder_path):
+                for file in files:
+                    full = os.path.join(root, file)
+                    ext = file.lower()
+                    if ext.endswith(".cbz"):
+                        cbz_entries.append(full)
+                    elif self._load_zip_as_cbz.get() and ext.endswith(".zip"):
+                        new_cbz = os.path.splitext(full)[0] + ".cbz"
+                        try:
+                            os.rename(full, new_cbz)
+                            self.executor.call_in_main_thread(
+                                lambda p=new_cbz: self.log(f"🔄 Renamed ZIP to CBZ: {os.path.basename(p)}")
+                            )
+                            cbz_entries.append(new_cbz)
+                        except Exception as e:
+                            self.executor.call_in_main_thread(
+                                lambda err=e: self.log(f"❌ Failed to rename ZIP: {err}")
+                            )
+                    elif ext.endswith((".jpg", ".jpeg", ".png", ".webp")):
+                        image_files.append(full)
+
+            def finalize():
+                self.cbz_entries = cbz_entries
+                self.image_files = image_files
+                self._auto.clear()
+                self._manual_front.clear()
+                self._manual_back.clear()
+                self._delete_queue.clear()
+                self.preview_state.clear()
+                self.preview_widgets.clear()
+                self.assignment_widgets.clear()
+                self.refresh_list()
+                self.log(f"✅ Loaded {len(cbz_entries)} CBZ(s) and {len(image_files)} image(s) from {os.path.basename(folder_path)}")
+
+            self.executor.call_in_main_thread(finalize)
+
+        self.executor.run_async(worker)
+
+    def load_multiple_folders(self, folders):
+        """Load CBZ files from multiple folders"""
+        def worker():
+            self.executor.call_in_main_thread(lambda: self.log(f"Loading files from {len(folders)} folders..."))
+            all_cbz_entries, all_image_files = [], []
+
+            for folder_path in folders:
+                cbz_entries, image_files = [], []
+                
+                for root, _, files in os.walk(folder_path):
+                    for file in files:
+                        full = os.path.join(root, file)
+                        ext = file.lower()
+                        if ext.endswith(".cbz"):
+                            cbz_entries.append(full)
+                        elif self._load_zip_as_cbz.get() and ext.endswith(".zip"):
+                            new_cbz = os.path.splitext(full)[0] + ".cbz"
+                            try:
+                                os.rename(full, new_cbz)
+                                self.executor.call_in_main_thread(
+                                    lambda p=new_cbz: self.log(f"🔄 Renamed ZIP to CBZ: {os.path.basename(p)}")
+                                )
+                                cbz_entries.append(new_cbz)
+                            except Exception as e:
+                                self.executor.call_in_main_thread(
+                                    lambda err=e: self.log(f"❌ Failed to rename ZIP: {err}")
+                                )
+                        elif ext.endswith((".jpg", ".jpeg", ".png", ".webp")):
+                            image_files.append(full)
+                
+                all_cbz_entries.extend(cbz_entries)
+                all_image_files.extend(image_files)
+
+            def finalize():
+                self.cbz_entries = all_cbz_entries
+                self.image_files = all_image_files
+                self._auto.clear()
+                self._manual_front.clear()
+                self._manual_back.clear()
+                self._delete_queue.clear()
+                self.preview_state.clear()
+                self.preview_widgets.clear()
+                self.assignment_widgets.clear()
+                self.refresh_list()
+                self.log(f"✅ Loaded {len(all_cbz_entries)} CBZ(s) and {len(all_image_files)} image(s) from {len(folders)} folders")
+
+            self.executor.call_in_main_thread(finalize)
+
+        self.executor.run_async(worker)
  
     def _center_window(self, win):
         win.update_idletasks()
@@ -615,47 +766,11 @@ class CBZCoverManager:
 
 
     def load_folder(self):
+        """Modified to use the new load_folder_path method"""
         folder = filedialog.askdirectory()
         if not folder:
             return
-    
-        def worker():
-            self.executor.call_in_main_thread(lambda: self.log("Loading files..."))
-            cbz_entries, image_files = [], []
-    
-            for root, _, files in os.walk(folder):
-                for file in files:
-                    full = os.path.join(root, file)
-                    ext = file.lower()
-                    if ext.endswith(".cbz"):
-                        cbz_entries.append(full)
-                    elif self._load_zip_as_cbz.get() and ext.endswith(".zip"):
-                        new_cbz = os.path.splitext(full)[0] + ".cbz"
-                        try:
-                            os.rename(full, new_cbz)
-                            self.log(f"🔄 Renamed ZIP to CBZ: {new_cbz}")
-                            cbz_entries.append(new_cbz)
-                        except Exception as e:
-                            self.log(f"❌ Failed to rename ZIP: {e}")
-                    elif ext.endswith((".jpg", ".jpeg", ".png", ".webp")):
-                        image_files.append(full)
-    
-            def finalize():
-                self.cbz_entries = cbz_entries
-                self.image_files = image_files
-                self._auto.clear()
-                self._manual_front.clear()
-                self._manual_back.clear()
-                self._delete_queue.clear()
-                self.preview_state.clear()
-                self.preview_widgets.clear()
-                self.assignment_widgets.clear()
-                self.refresh_list()
-                self.log(f"Loaded {len(cbz_entries)} CBZs and {len(image_files)} images.")
-    
-            self.executor.call_in_main_thread(finalize)
-    
-        self.executor.run_async(worker)
+        self.load_folder_path(folder)
 
 
     def load_cbz_files(self, files=None):
@@ -704,6 +819,7 @@ class CBZCoverManager:
 
 
     def mark_first_image_all(self):
+        logger.info(f"Executing mark_first_image_all")
         for cbz_path in self.cbz_entries:
             try:
                 with zipfile.ZipFile(cbz_path, "r") as zf:
@@ -719,6 +835,7 @@ class CBZCoverManager:
                 self.log(f"Error marking first image in {cbz_path}: {e}")
     
     def mark_last_image_all(self):
+        logger.info(f"Executing mark_last_image_all")
         for cbz_path in self.cbz_entries:
             try:
                 with zipfile.ZipFile(cbz_path, "r") as zf:
@@ -929,6 +1046,7 @@ class CBZCoverManager:
         self.log("Cleared all global cover assignments")
         
     def remove_auto_covers(self):
+        logger.info(f"Executing remove_auto_covers")
         pattern = re.compile(r"!010\d+_cover_auto|zzzzzz_980\d+_backcover_auto", re.IGNORECASE)
         affected = 0
         for cbz_path in self.cbz_entries:
@@ -947,6 +1065,7 @@ class CBZCoverManager:
         self.log(f"Marked {affected} auto-assigned cover(s) for deletion")
     
     def remove_manual_covers(self):
+        logger.info(f"Executing remove_manual_covers")
         pattern = re.compile(r"!000\d+_cover_manual|zzzzzz_990\d+_backcover_manual", re.IGNORECASE)
         affected = 0
         for cbz_path in self.cbz_entries:
@@ -965,6 +1084,7 @@ class CBZCoverManager:
         self.log(f"Marked {affected} manually-assigned cover(s) for deletion")
     
     def remove_global_covers(self):
+        logger.info(f"Executing remove_global_covers")
         pattern = re.compile(r"!020\d+_cover_global|zzzzzz_970\d+_backcover_global", re.IGNORECASE)
         affected = 0
         for cbz_path in self.cbz_entries:
@@ -984,6 +1104,7 @@ class CBZCoverManager:
 
     
     def remove_cbz_covers(self, cbz_path):
+        logger.info(f"Executing remove_cbz_covers")
         pattern = re.compile(r"^(!0\d{3}_cover_|zzzzzz_\d{4}_backcover_)", re.IGNORECASE)
         try:
             with zipfile.ZipFile(cbz_path, "r") as zf:
@@ -1082,7 +1203,8 @@ class CBZCoverManager:
             if ghost_label:
                 try:
                     ghost_label.destroy()
-                except:
+                except (AttributeError, tk.TclError) as e:
+                    logger.debug(f"Error destroying ghost label: {e}")
                     pass
             label._drag_data = {'x': event.x, 'y': event.y, 'index': idx}
             label.config(highlightbackground="#FFA500", highlightthickness=2)
@@ -1117,11 +1239,13 @@ class CBZCoverManager:
                             save_reordered(combined)
                             self.render_assignment_preview(cbz_path)
                         break
-                except:
+                except (AttributeError, ValueError, IndexError) as e:
+                    logger.debug(f"Error in label iteration: {e}")
                     continue
             try:
                 label.config(highlightthickness=0)
-            except:
+            except (AttributeError, tk.TclError) as e:
+                logger.debug(f"Error configuring label: {e}")
                 pass
     
         def remove_image(index):
@@ -1202,20 +1326,28 @@ class CBZCoverManager:
         self.render_assignment_preview(cbz_path)
 
 
-    def auto_assign(self, cbz_path):
-        vol = extract_vol_number(safe_basename(cbz_path))
+    def auto_assign(self, cbzpath):
+        vol = extract_vol_number(safe_basename(cbzpath))
         if vol is None:
-            self._auto[cbz_path] = []
+            self._auto[cbzpath] = []
             return
-        vol_pattern = re.compile(rf"v(?:ol)?\.?0*{vol}\b", re.IGNORECASE)
-        matches = [
-            img for img in self.image_files
-            if vol_pattern.search(os.path.basename(img))
-        ]
-        self._auto[cbz_path] = [(img, "back" in img.lower(), "auto") for img in matches]  # Tag as auto
-        self.log(f"Auto-assigned {len(matches)} images to {safe_basename(cbz_path)}")
-        self.render_assignment_preview(cbz_path)
+        
+        # FIXED: Corrected pattern to match various volume formats
+        vol_pattern = re.compile(
+            rf'v(?:ol(?:ume)?)?\.?\s*0*{vol}\b|'     # v1, v01, vol 1, vol. 1, volume 1
+            rf'\bvol\.?\s*0*{vol}\b|'                 # Vol. 1, Vol 1
+            rf'\bvolume\s+0*{vol}\b',                 # Volume 1, Volume 01
+            re.IGNORECASE
+        )
+        
+        matches = [img for img in self.image_files 
+                   if vol_pattern.search(os.path.basename(img))]
+        
+        self._auto[cbzpath] = [(img, 'back' in img.lower(), 'auto') for img in matches]
+        self.log(f"Auto-assigned {len(matches)} images to {safe_basename(cbzpath)}")
+        self.render_assignment_preview(cbzpath)
 
+    
     def apply_cbz(self, cbz_path):
         self.executor.call_in_main_thread(lambda: self.log(f"Applying changes to {os.path.basename(cbz_path)}..."))
     
@@ -1303,7 +1435,9 @@ class CBZCoverManager:
             for tmp in temp_files:
                 try:
                     os.remove(tmp)
-                except:
+                except Exception as e:
+
+                    logger.warning(f"Unexpected error: {e}")
                     pass
 
     def apply_all(self):
@@ -1331,7 +1465,9 @@ class CBZCoverManager:
                 parent = frame.master.master
                 try:
                     parent.config(bg=color)
-                except:
+                except Exception as e:
+
+                    logger.warning(f"Unexpected error: {e}")
                     pass
     
         def worker_apply(cbz_path):
