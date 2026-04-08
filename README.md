@@ -1,31 +1,19 @@
-# 📦 CBZ Cover Manager
+# CBZ Cover Manager
 
-A powerful and modern GUI tool for managing, adding, removing, and previewing **cover images in CBZ files** (Comic Book Zip). Built with **Python + Tkinter**, it supports drag-and-drop, dark mode, manual and automated assignments.
+**CBZ Cover Manager** is a lightweight, fast, and feature-rich desktop GUI application built with Python and Tkinter for managing, assigning, and modifying front and back covers of CBZ (Comic Book Archive) files. 
 
----
+It provides an intuitive interface with drag-and-drop support, auto-matching capabilities, and safe asynchronous zip operations to ensure your comic archives are updated efficiently without corrupting data.
 
 ## 🚀 Features
 
-- ✅ Load `.cbz` or `.zip` files (with optional auto-rename ZIP to CBZ).
-- ✅ Drag & Drop folder or files into UI.
-- ✅ Navigate and preview pages from within CBZs.
-- ✅ Mark individual pages for deletion, with undo support.
-- ✅ Mark all First/Last pages for deletion, with clear support.
-- ✅ Auto/Manual/Global Front & Back cover assignment.
-- ✅ CBZ-level and Global cover removal options.
-- ✅ Preview assigned covers before applying.
-- ✅ Reorder covers via drag-and-drop.
-- ✅ Apply or Clear changes selectively or globally.
-- ✅ Fully responsive **Dark Mode** with AMOLED black support.
-- ✅ Help & About with GitHub link.
-
----
-
-## 🖼️ Cover Manipulation
-
-- **Auto Assignment**: Auto append image(s) based on filename patterns like `v02 Front.webp/v02 Front Alt.webp/v02 Front 2.webp and so on`.
-- **Manual Assignment**: Choose image(s) from anywhere locally.
-- **Global Assignment**: Assign same image(s) to all CBZs (optionally filter by name to apply selectively).
+- **Drag and Drop Support:** Seamlessly drag and drop CBZ files, folders, or images directly into the application.
+- **Fast ZIP Operations:** Uses intelligent, cache-backed ZIP operations (`fastappendcovers`) to append covers without requiring full extraction and recompression when possible.
+- **Responsive UI & Dark Mode:** Virtual scrolling for high performance even with hundreds of loaded files, plus a built-in Dark Mode toggle.
+- **Real-Time Filtering:** Search and filter your loaded CBZ files instantly to apply targeted changes.
+- **Smart Auto-Assignment:** Automatically matches loose image files to corresponding CBZ files by extracting volume numbers (e.g., `v01`, `vol.7`, `volume 12`).
+- **Global Cover Assignment:** Apply a specific front or back cover to all loaded CBZ files or a filtered subset with one click.
+- **Manual Assignment:** Drag and drop images onto individual CBZ preview panels to assign them manually.
+- **Cover Deletion:** Easily mark the first or last images inside a CBZ for deletion to clean up unwanted metadata or ad pages to all loaded CBZ files or a filtered subset with one click.
 - **Set as Cover from CBZ**: Mark currently previewed page from Navigation as Front/Back Cover.
 - **Priority**: Manual > Auto > Global.
 - **Remove Covers**: One click removal of everything this program has added without touching your original files.
@@ -34,49 +22,66 @@ A powerful and modern GUI tool for managing, adding, removing, and previewing **
 ![image](https://github.com/user-attachments/assets/1ace9cb9-5436-4c15-a0df-7e2a852d020c)
 _Example Preview of GUI showing Manual Assign, Auto Assign, Set as Front/Back Cover and Delete in Play._
 
-## 📦 Installation
 
-### 🧪 Dependencies
+## 🛠️ Prerequisites
 
-- `Pillow`
-- `tkinter` (built-in)
-- `tkinterDnD2` (optional but recommended for drag-and-drop)
+- **Python 3.7+**
+- Required Python packages: `Pillow` and `tkinterdnd2`.
 
-### Option 1: Run with Python
+## 📦 Installation & Usage
 
-```bash
-pip install Pillow tkinterdnd2
-python cbzgui.py
-```
+You can run the application using standard Python `pip` or using `uv` for modern, isolated package management.
 
-### Option 2: Run with [UV](https://github.com/astral-sh/uv)
+### Method 1: Standard Pip (Recommended)
 
-```bash
-pip install uv
-uv run cbzgui.py
-```
-### Option 3: Grab the .exe from Release Page.
----
+1. Clone or download this repository.
+2. Install the required dependencies:
+   ```bash
+   pip install Pillow tkinterdnd2
+   ```
+3. Run the application:
+   ```bash
+   python cbz-cover-manager.py
+   ```
 
----
+### Method 2: Using UV
 
-## 📖 Usage Guide
+1. Install `uv` if you haven't already:
+   ```bash
+   pip install uv
+   ```
+2. Run the application directly (dependencies will be handled):
+   ```bash
+   uv run cbz-cover-manager.py
+   ```
 
-See the **Help** section within the app for a detailed walkthrough. A quick summary:
+## 📖 How to Use
 
-- Load your files or folder
-- Assign covers manually, automatically, or globally
-- Preview and reorder assignments
-- Apply or Clear changes
-- Toggle dark mode and more
+1. **Loading Files:** 
+   - Drag and drop `.cbz` files or entire folders containing `.cbz` files directly into the main window.
+   - Alternatively, use the **Load** dropdown menu in the toolbar.
+   - *Tip:* You can enable the "Load ZIP as CBZ" toggle in the top right to automatically convert dropped `.zip` archives.
 
----
+2. **Assigning Covers:**
+   - **Auto Assign:** Click `Auto Assign All` to have the app look for volume patterns in your loaded image files and assign them automatically to the correct CBZ.
+   - **Global Front / Back:** Use the `Global Front` or `Global Back` buttons (or drag images onto them) to assign an image to *all currently displayed/filtered* CBZ files.
+   - **Manual:** Drag an image directly over the Front/Back preview areas of a specific CBZ card to assign it.
 
-## 🔗 GitHub
+3. **Managing Existing Covers:**
+   - Use `Delete First Image` or `Delete Last Image` to queue up the removal of pages inside the archives.
+   - You can clear assignments at any time using the `Remove Covers` menu or the `Clear All` button.
 
-[GitHub Repo](https://github.com/Ark1369/CBZ-Cover-Manager)
+4. **Applying Changes:**
+   - Once your covers are assigned and previewed in the UI, click **Apply All**. 
+   - The app will safely rewrite your archives in the background using thread-safe operations. Check the log window at the bottom for real-time progress.
 
----
+## ⚠️ Safety & Backups
+
+While CBZ Cover Manager employs safe rewriting techniques (writing to a temporary UUID file before replacing the original), it is always highly recommended to **backup your comic files** before running bulk operations. 
+
+## 📝 License
+
+This project is open-source and free to use.
 
 ## 🧑‍💻 Author
 
